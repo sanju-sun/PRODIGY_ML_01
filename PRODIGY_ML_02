@@ -1,0 +1,128 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.mixture import GaussianMixture
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
+
+# Set random seed for reproducibility
+np.random.seed(42)
+
+# Number of customers
+num_customers = 1000
+
+# Generate random values for purchase frequency and total amount spent
+purchase_frequency = np.random.randint(1, 11, size=num_customers)  # Random integers between 1 and 10
+total_amount_spent = np.random.uniform(10, 500, size=num_customers)  # Random uniform distribution between 10 and 500
+
+# Create a DataFrame to store the data
+customer_data = pd.DataFrame({
+    'CustomerID': range(1, num_customers + 1),
+    'Purchase Frequency': purchase_frequency,
+    'Total Amount Spent': total_amount_spent
+})
+
+# Save the dataset to a CSV file
+customer_data.to_csv("C:\\Users\\aquil\\OneDrive\\Documents\\shopping_trends_updated.csv", index=False)
+
+# Display the first few rows of the dataset
+print(customer_data.head())
+
+# Load the dataset
+data = pd.read_csv("C:\\Users\\aquil\\OneDrive\\Documents\\shopping_trends_updated.csv")
+
+# Assuming the dataset has features like purchase frequency, total amount spent, etc.
+X = data[['Purchase Frequency', 'Total Amount Spent']]
+
+# Standardize the features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Determine the optimal number of clusters using the Bayesian Information Criterion (BIC)
+bic = []
+n_components_range = range(1, 11)
+for n_components in n_components_range:
+    gmm = GaussianMixture(n_components=n_components, random_state=42)
+    gmm.fit(X_scaled)
+    bic.append(gmm.bic(X_scaled))
+
+# Plot the BIC scores
+plt.plot(n_components_range, bic, marker='o')
+plt.title('BIC Scores for Gaussian Mixture Model')
+plt.xlabel('Number of Components')
+plt.ylabel('BIC Score')
+plt.show()
+
+# Based on the BIC scores, let's say we choose 3 components
+optimal_components = 3
+
+# Apply Gaussian Mixture Model clustering
+gmm = GaussianMixture(n_components=optimal_components, random_state=42)
+clusters = gmm.fit_predict(X_scaled)
+
+# Add cluster labels to the original dataset
+data['Cluster'] = clusters
+
+# Visualize the clusters
+plt.figure(figsize=(10, 6))
+for cluster in range(optimal_components):
+    cluster_data = data[data['Cluster'] == cluster]
+    plt.scatter(cluster_data['Purchase Frequency'], cluster_data['Total Amount Spent'], label=f'Cluster {cluster}')
+plt.scatter(gmm.means_[:, 0], gmm.means_[:, 1], s=300, c='red', label='Centroids', marker='X')
+plt.title('Customer Segmentation based on Purchase History')
+plt.xlabel('Purchase Frequency')
+plt.ylabel('Total Amount Spent')
+plt.legend()
+plt.show()
+
+# Evaluate clustering performance using silhouette score
+sil_score = silhouette_score(X_scaled, clusters)
+print(f'Silhouette Score: {sil_score}')
+
+# Descriptive statistics for each cluster
+cluster_stats = data.groupby('Cluster').agg({
+    'Purchase Frequency': ['mean', 'std', 'min', 'max'],
+    'Total Amount Spent': ['mean', 'std', 'min', 'max', 'count']
+})
+print('\nDescriptive Statistics for Each Cluster:')
+print(cluster_stats)
+
+# Visualize distribution of purchase frequency and total amount spent for each cluster
+plt.figure(figsize=(14, 8))
+plt.subplot(2, 1, 1)
+sns.boxplot(data=data, x='Cluster', y='Purchase Frequency')
+plt.title('Distribution of Purchase Frequency by Cluster')
+plt.subplot(2, 1, 2)
+sns.boxplot(data=data, x='Cluster', y='Total Amount Spent')
+plt.title('Distribution of Total Amount Spent by Cluster')
+plt.tight_layout()
+plt.show()
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+   CustomerID  Purchase Frequency  Total Amount Spent
+0           1                   7          135.447611
+1           2                   4          365.786837
+2           3                   8          300.551824
+3           4                   5           60.084205
+4           5                   7          460.187756
+
+
+Silhouette Score: 0.3795190184156087
+
+Descriptive Statistics for Each Cluster:
+        Purchase Frequency                   Total Amount Spent             \
+                      mean       std min max               mean        std   
+Cluster                                                                      
+0                 5.423295  2.820322   1  10         100.265405  53.322683   
+1                 2.903030  1.421606   1   5         348.924167  84.533947   
+2                 8.116352  1.390249   6  10         332.968220  93.074450   
+
+                                       
+                min         max count  
+Cluster                                
+0         10.116387  210.644148   352  
+1        191.990198  496.735099   330  
+2        173.449079  499.683215   318  
+
+​
